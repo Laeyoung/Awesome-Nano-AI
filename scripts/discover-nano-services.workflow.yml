@@ -1,0 +1,52 @@
+# Copy this file to .github/workflows/discover-nano-services.yml
+# This file cannot be pushed via GitHub App due to workflow permission restrictions.
+# Please add it manually through the GitHub UI or with a personal access token.
+
+name: Discover Nano AI Services
+
+on:
+  schedule:
+    - cron: '0 9 * * 1'  # Every Monday at 09:00 UTC
+  workflow_dispatch:       # Manual trigger
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run discovery script
+        id: discover
+        run: python scripts/discover_nano_services.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Pull Request
+        if: steps.discover.outputs.new_count != '0'
+        uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Add newly discovered Nano AI services"
+          title: "Add ${{ steps.discover.outputs.new_count }} new Nano AI service(s)"
+          body: |
+            Automated discovery found new Nano AI services:
+
+            ${{ steps.discover.outputs.new_services }}
+
+            ---
+            _This PR was created automatically by the Discover Nano AI Services workflow._
+          branch: auto/discover-nano-services
+          base: master
